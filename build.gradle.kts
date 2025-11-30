@@ -24,13 +24,13 @@ val localProperties: Properties by lazy {
     props
 }
 
-group = "net.tactware.kwire"
-version = "1.0.10"
+group = "net.tactware.wordprocessor"
+version = "1.0.0"
 
 
 subprojects {
     plugins.withId("maven-publish") {
-        the<org.gradle.api.publish.PublishingExtension>().repositories {
+        the<PublishingExtension>().repositories {
             maven {
                 name = "staging"
                 url = uri(rootProject.layout.buildDirectory.dir("staging-deploy"))

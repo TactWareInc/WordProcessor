@@ -6,7 +6,7 @@ plugins {
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.composeHotReload)
     alias(libs.plugins.kotlinSerialization)
-    id("com.vanniktech.maven.publish") version "0.34.0"
+    id("com.vanniktech.maven.publish") version "0.35.0"
     signing
 }
 
@@ -71,10 +71,10 @@ mavenPublishing {
 
     // Configure POM metadata
     pom {
-        name.set("KWire")
-        description.set("RPC library alternative to gRPC, optimized for Kotlin Multiplatform")
+        name.set("WordProcessor Core")
+        description.set("Core word processing utilities for Kotlin Multiplatform")
         inceptionYear.set("2024")
-        url.set("https://github.com/TactWareInc/KWire")
+        url.set("https://github.com/TactWareInc/WordProcessor")
 
         licenses {
             license {
@@ -93,9 +93,9 @@ mavenPublishing {
         }
 
         scm {
-            url.set("https://github.com/TactWareInc/KWire")
-            connection.set("scm:git:git://github.com/TactWareInc/KWire.git")
-            developerConnection.set("scm:git:ssh://git@github.com/TactWareInc/KWire.git")
+            url.set("https://github.com/TactWareInc/WordProcessor")
+            connection.set("scm:git:git://github.com/TactWareInc/WordProcessor.git")
+            developerConnection.set("scm:git:ssh://git@github.com/TactWareInc/WordProcessor.git")
         }
     }
 }
