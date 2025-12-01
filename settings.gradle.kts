@@ -29,6 +29,5 @@ dependencyResolutionManagement {
 rootProject.name = "WordProcessor"
 
 include(":core")
-include(":sample")
 
 

@@ -1,168 +1,117 @@
-# JsonComposeViewer
+## WordProcessor
 
-JsonComposeViewer is a **Kotlin Multiplatform** component for rendering JSON data using **Jetpack Compose / Compose Multiplatform**.
+WordProcessor is a **Kotlin Multiplatform** library that provides low‑level **word‑oriented byte processing**, message holders, and streaming reassembly utilities for binary protocols.
 
-It takes a `kotlinx.serialization.json.JsonElement` and renders it as a **collapsible, syntax‑colored tree**, with:
+It focuses on:
 
-- **Objects and arrays** rendered as expandable containers
-- **Primitives** (strings, numbers, booleans, null) color‑coded by type
-- **Indentation driven by a CompositionLocal**, so nested content lines up cleanly
-- A configurable **`JsonViewerStyle`** to control colors, spacing, and whether to show field/element counts
+- **Configurable word sizes** (16/32/64‑bit)
+- **Byte order control** (endianness)
+- **Protocol‑aware processing** via pluggable handlers
+- **Message holders and reassemblers** for streaming or chunked data
 
 This repository contains:
 
-- `core/` – the JsonComposeViewer library
-- `sample/` – a small multiplatform sample app that demonstrates the viewer
+- `core/` – the WordProcessor core library
+- `sample/` – a small multiplatform sample app (work in progress)
 
 ---
 
 ## Features
 
 - **Kotlin Multiplatform**:
-  - `commonMain` UI built with Compose Multiplatform
-  - Targets: Android, JVM desktop, and Wasm JS (via Compose Multiplatform)
-- **Hierarchy viewer for JSON**:
-  - Collapsible objects and arrays
-  - Type‑based coloring for keys and values
-  - Indentation managed by a `CompositionLocal` instead of manual parameters
-- **Customizable styling** via `JsonViewerStyle`:
-  - Colors for keys, strings, numbers, booleans, and nulls
-  - Background, corner radius, border color/width
-  - Indentation and vertical spacing
-  - Font size
-  - Expand/collapse icon color
-  - **`showElementCount`** to toggle whether headers show the number of fields/elements
+  - `commonMain` logic shared across targets
+  - Targets: Android and JVM (additional targets can be added)
+- **Core word processing**:
+  - `WordProcessor` interface with configurable `WordSize` and `ByteOrder`
+  - Conversion between byte arrays and words represented as `Long`
+  - Validation of input buffers
+- **Protocol helpers**:
+  - `ProtocolHandler` and implementations for raw and standard processing
+  - Message holders (`Message`, `WordHolder`, etc.) for representing packets/frames
+- **Streaming reassembly**:
+  - `MessageReassembler` and implementations for feeding byte streams
+  - Buffering of partial data and emission of complete `Message` instances
+
+---
+
+## Installation
+
+Artifacts are published as `WordProcessor Core` to Maven Central.
+
+Gradle (Kotlin DSL):
+
+```kotlin
+dependencies {
+    implementation("net.tactware.wordprocessor:core:1.0.0")
+}
+```
+
+Make sure you have Maven Central enabled:
+
+```kotlin
+repositories {
+    mavenCentral()
+}
+```
 
 ---
 
 ## Getting started
 
-JsonComposeViewer expects a `JsonElement` from `kotlinx.serialization.json.Json`. A typical flow is:
-
-1. Parse a JSON string into a `JsonElement`
-2. Pass it to `JsonComposeViewer` from your Compose UI
-
-Example:
+### Creating a `WordProcessor`
 
 ```kotlin
-import androidx.compose.runtime.Composable
-import kotlinx.serialization.json.Json
-import net.tactware.jsoncomposeviewer.core.JsonComposeViewer
-import net.tactware.jsoncomposeviewer.core.JsonViewerStyle
+import net.tactware.wordprocessor.core.ByteOrder
+import net.tactware.wordprocessor.core.WordProcessorFactory
+import net.tactware.wordprocessor.core.WordSize
 
-@Composable
-fun MyJsonScreen(jsonString: String) {
-    val element = Json.parseToJsonElement(jsonString)
+val processor = WordProcessorFactory.create(
+    wordSize = WordSize.WORD_32,
+    byteOrder = ByteOrder.BIG_ENDIAN
+)
 
-    JsonComposeViewer(
-        jsonElement = element,
-        style = JsonViewerStyle(
-            // Customize as needed
-            showElementCount = false, // default; set true to show counts
-        ),
-        initiallyExpanded = true
+val bytes: ByteArray = /* incoming data */
+require(processor.validate(bytes))
+
+val words: List<Long> = processor.extractWords(bytes)
+```
+
+### Using a `MessageReassembler`
+
+```kotlin
+import net.tactware.wordprocessor.reassembler.MessageReassembler
+import net.tactware.wordprocessor.reassembler.MessageReassemblerFactory
+
+val reassembler: MessageReassembler =
+    MessageReassemblerFactory.fixedSize(
+        expectedWordCount = 8, // example
+        wordSize = WordSize.WORD_32,
+        byteOrder = ByteOrder.BIG_ENDIAN
     )
+
+incomingChunks.forEach { chunk ->
+    val messages = reassembler.feed(chunk)
+    messages.forEach { message ->
+        // handle complete message
+    }
 }
 ```
 
-> **Note:** Publishing coordinates for this library may change; for now, treat this repository as the source of truth and depend on it via a composite build or by copying the `core` module into your project.
+Refer to the `core/src/commonMain/kotlin/net/tactware/wordprocessor` package for more details on available processors, handlers, and message types.
 
 ---
 
-## `JsonComposeViewer` API overview
+## Modules
 
-The main entry point is the `JsonComposeViewer` composable:
-
-- **Package**: `net.tactware.jsoncomposeviewer.core`
-
-```kotlin
-@Composable
-fun JsonComposeViewer(
-    jsonElement: JsonElement,
-    modifier: Modifier = Modifier,
-    style: JsonViewerStyle = JsonViewerStyle(),
-    initiallyExpanded: Boolean = false
-)
-```
-
-- **`jsonElement`** – The `JsonElement` to render (object, array, or primitive)
-- **`modifier`** – Usual Compose `Modifier` for layout
-- **`style`** – A `JsonViewerStyle` instance to tweak appearance
-- **`initiallyExpanded`** – Whether nested objects/arrays start expanded
-
-Internally, `JsonComposeViewer`:
-
-- Provides an **indentation level** via a `CompositionLocal`
-- Dispatches to internal composables:
-  - `JsonObjectView` for `JsonObject`
-  - `JsonArrayView` for `JsonArray`
-  - `JsonPrimitiveView` for `JsonPrimitive`
-
-You normally only use `JsonComposeViewer` and `JsonViewerStyle` directly.
-
----
-
-## `JsonViewerStyle`
-
-`JsonViewerStyle` lets you customize how the viewer looks:
-
-- **Package**: `net.tactware.jsoncomposeviewer.core`
-
-Key properties (see `core/src/commonMain/.../JsonViewerStyle.kt` for full list):
-
-- **`keyColor`** – Color for JSON object keys
-- **`stringColor`**, **`numberColor`**, **`booleanColor`**, **`nullColor`**
-- **`backgroundColor`** – Background for collapsible headers
-- **`indentation`** – Horizontal space added per nesting level
-- **`spacing`** – Vertical spacing between entries
-- **`borderColor`**, **`borderWidth`**, **`cornerRadius`**
-- **`fontSize`**
-- **`expandIconColor`**
-- **`showElementCount`** – Controls header text:
-  - Objects: `{3}` vs `{}`
-  - Arrays: `[5]` vs `[]`
-
-Example:
-
-```kotlin
-val style = JsonViewerStyle(
-    showElementCount = true,   // show field/element counts in headers
-    indentation = 20.dp,
-    spacing = 6.dp
-)
-
-JsonComposeViewer(
-    jsonElement = element,
-    style = style,
-    initiallyExpanded = false
-)
-```
-
----
-
-## Sample app
-
-The `sample` module demonstrates JsonComposeViewer on multiple platforms.
-
-### Desktop (JVM)
-
-- Entry point: `sample/src/jvmMain/kotlin/net/tactware/jsoncomposeviewer/sample/Main.kt`
-- Main screen: `sample/src/commonMain/kotlin/net/tactware/jsoncomposeviewer/sample/JsonViewerSampleScreen.kt`
-
-Run from the project root:
-
-```bash
-./gradlew :sample:run
-```
-
-Or run `MainKt` from your IDE in the `sample` module.
-
-### Android
-
-- Main activity: `sample/src/androidMain/kotlin/net/tactware/jsoncomposeviewer/sample/MainActivity.kt`
-- It simply sets `JsonViewerSampleScreen()` as its content.
-
-Open the project in Android Studio or IntelliJ IDEA and run the `sample` Android configuration on a device/emulator.
+- `core`:
+  - `core/` – core word processing interfaces and factories (`WordProcessor`, `WordProcessorFactory`, `WordSize`, `ByteOrder`)
+  - `bits/` – bit‑level extraction and manipulation helpers
+  - `holder/` – message and word holder abstractions
+  - `impl/` – concrete `WordProcessor` implementations (16/32/64‑bit)
+  - `protocol/` – protocol handler abstractions and implementations
+  - `reassembler/` – message reassembly APIs and implementations
+- `sample`:
+  - Multiplatform sample app demonstrating basic usage (may be evolving alongside the library API)
 
 ---
 
@@ -191,5 +140,5 @@ Kotlin and Gradle versions are controlled via:
 
 ## License
 
-Unless otherwise specified, this project is provided under the license declared in the repository root (add or reference your license file/text here). 
+Unless otherwise specified, this project is provided under the license declared in the repository root (for example, Apache‑2.0 as used in published artifacts). 
 
